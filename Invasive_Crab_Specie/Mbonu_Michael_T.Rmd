@@ -1,0 +1,589 @@
+---
+title: "BIO 3012 Home exam 2023" 
+output:
+  html_document: default
+  pdf_document: default
+date: "2023-03-23"
+---
+
+**MICHAEL TOCHUKWU MBONU**
+
+**Set working directory and read in the data file**
+
+```{r, echo=TRUE, results='hide'}
+Crab<-read.csv(file="Data_for_Dryad.csv", sep=",", header=T)
+summary(Crab)
+```
+
+**1) Sampling design and data**
+
+**1a.**
+
+The article discusses research on crabs collected from three sites on the east coast of the United States. The researchers likely chose these sites based on their varying levels of climate change to obtain unbiased data. One hypothesis to explain this sampling design is that an increase in temperature leads to an increase in metabolic rate. The study found that increased metabolic rates can lead to reduced fitness in invasive crab species.
+
+**1b**.
+
+Temperature is a significant variable in the study and represents climate change. The authors conditioned the chamber where crabs were placed to reflect their natural habitats to support this. Temperature is used as an indicator of metabolic rate changes in crabs. It is unclear whether the temperature measured in the experimental boxes is accurate compared to temperatures in the natural environment experienced by crabs. Validation of the outcomes with a comparison between the experimental box temperature and the in situ temperature is necessary.
+
+**1c.**
+
+The dataset has 181 observations, which is less than the total number of crabs collected (215). This is likely because smaller crabs were grouped together in the dataset. The study has roughly balanced sampling from the three sites, with New Jersey having slightly more samples.
+
+Using the with() or table function allows you to easily analyze the data by site and sex.
+
+```{r, echo=FALSE}
+# Create a table with the number of samples clustered by Site & Sex
+
+with(Crab, table(Site, Sex))
+
+table(Crab$Site, Crab$Sex)
+```
+
+**1d.**
+
+The variable Sex has a category called Multiple, likely due to exposure to estrogenic endocrine-disrupting chemicals. The data shows that crabs in the Multiple category differ from males and females, but there are no detailed reports on this. The Sex variable includes Female, Male, and Multiple categories, and crabs under 10 mm CW were pooled in the Multiple category for metabolic rate measurement. The paper reports significant interactions between body size and Sex but does not mention the Multiple category specifically in the results.
+
+**1e.**
+
+The two measures of missing limbs and regenerating limbs on crabs during dissections are not independent, meaning they are correlated. This is because crabs have the ability to regenerate their lost limbs. Therefore, when more limbs are missing, there is a higher chance of finding regenerating limbs on that crab.
+
+To determine the level of correlation, one can use the function 'cor()'
+
+```{r, include=TRUE}
+
+cor(Crab$NumberLimbMissing,Crab$NumberLimbRegen, method = 'spearman') # 0.56 inclu. 0
+```
+
+The correlation value shows a slighlty positive corelation. we can plot this:
+
+```{r, include=TRUE}
+par(mfrow=c(1,1)) #set plotting parameter to single row and single column
+plot(Crab$NumberLimbMissing~Crab$NumberLimbRegen)+abline(0,1) 
+```
+
+From our plot we can notice there are a lot of 0 values. we can use the subset( ) function to remove the 0 values
+
+```{r, echo=FALSE}
+s<-subset(Crab, NumberLimbMissing!=0 & NumberLimbRegen!=0) # Excluding 0 values
+cor(s$NumberLimbMissing,s$NumberLimbRegen, method = 'spearman') # 0.96 exclu. 0
+```
+
+Plotting correlation
+
+```{r, include=TRUE}
+par(mfrow=c(1,1)) #set plotting parameter to single row and single column
+plot(s$NumberLimbMissing~s$NumberLimbRegen)+abline(0,1) 
+
+```
+
+excluding the 0 value the corelation is very strong and positive (0.926). this indicates that the higher the NumberLimbRegen the higher the NumberLimbMissing.
+
+The two count variables (NumberLimbRegen & NumberLimbMissing ) have reported surprising values that are less than 1 and are found at all sites. These values occur due to the authors' practice of averaging measurements taken after pooling crabs. To interpret these values better, one needs to examine the variables using 'with ()' method.
+
+```{r, include=TRUE}
+with(Crab,table(Site, NumberLimbMissing))
+with(Crab,table(Site, NumberLimbRegen))
+```
+
+**1f.**
+
+The summary states that there is a surprising value of 0 for the variable representing estimates of crab dry weights. This value is unexpected because it is reasonable to assume that a crab with a wet mass should have some amount of dry mass as well. Hence, the 0 value for PerCrabDryMass warrants further investigation.
+
+```{r,echo=FALSE}
+### 1F ----
+
+summary(Crab$PerCrabDryMass) # Found a value of 0
+
+```
+
+**1g.**
+
+The variable "Final.oxygen.concentration"does not show a fairly symmetric distribution. The variable distribution shows a **positive skewness** (i.e the tail is longer on the right-hand side of the distribution). The sample size is likely to affect the form of the variable distribution.
+
+To visualize the distribution of a variable, we can plot it using the hist( ) function, which can display the frequency of values of a given variable.
+
+```{r,echo=FALSE}
+### 1G ----
+
+hist(Crab$Final.oxygen.concentration) # Non-symmetrical
+
+```
+
+we can also plot the density( )
+
+```{r, echo=FALSE}
+plot(density(Crab$Final.oxygen.concentration))+
+  abline(v=mean(Crab$Final.oxygen.concentration),col="red")
+```
+
+**2) General model results**
+
+2a. The response variable is the metabolic rate.
+
+The hypothesis tested by t and p values for both interactions includes:
+
+-   For interaction between effects of body size and sex: the hypothesis tested by t and p values reported is 'PerCrabDryMass:SexMale'
+
+-   For interactions between temperature and collection site: the hypothesis tested by t and p values reported is "SiteNJ:Temp"
+
+    ```{r,echo=TRUE, results='hide'}
+    summary(lm(Metabolic.rate ~
+                 NumberLimbMissing+NumberLimbRegen+PerCrabDryMass+Sex+Site+Temp,data=Crab))
+
+    ```
+
+    The authors used the step ( ) function for model selection
+
+    ```{r, echo=TRUE, results='hide'}
+    steptest<-step(lm(Metabolic.rate ~
+                        (PerCrabDryMass+Sex+Site+Temp)^2,data=Crab))
+    ```
+
+    ```{r}
+    summary(steptest)
+    ```
+
+    **2b.**
+
+    The alternative approach to t-tests for testing significant interactions between body size and sex, and temperature and collection site is ANOVA. ANOVA allows for testing significant interactions between a response variable and multiple predictor variables. In this case, ANOVA was used to test for significant interactions between the effects of PerCrabDryMass:Sex and Site:Temp. The conclusion was that the interactions effect between PerCrabDryMass:Sex and Site:Temp were significant with p-values of 0.039 and 0.002 respectively.
+
+    ```{r}
+    anova(steptest) 
+    ```
+
+    **2c.**
+
+    Based on the analysis conducted in 2b, the order in which variables are included in the model can indeed affect the conclusions. This is due to the fact that ANOVA entails testing several predictor variables, and the order in which they are added may impact the significance of their impact on the response variable. Hence, it is essential to take into account the variable inclusion order when interpreting ANOVA results.
+
+    An example of this effect is displayed in the analysis below after rearranging the order of PerCrabDryMass and Sex variables.
+
+    ```{r, results='hide'}
+    ### 2C
+    steptest2<-step(lm(Metabolic.rate ~
+                        (Site+Temp+PerCrabDryMass+Sex)^2,data=Crab))
+    ```
+
+    ```{r}
+    anova(steptest2)
+    ```
+
+    after changing the order, it affected the interaction variable of PerCrabDryMass:Sex as **p value is 0.06 it was 0.04 in 2b analysis.**
+
+    2d. The estimated relationship between the temperature at all sites and the metabolic rate of crabs does not follow the expected pattern. According to the paper's introduction, the metabolic rate should increase with an increase in temperature.
+
+    ```{r,echo=FALSE}
+    plot(Crab$Temp, Crab$Metabolic.rate)
+    ```
+
+    linear model plots for temperature at all sites clearly isn't ok
+
+    ```{r, echo=TRUE,results='hide'}
+
+    all<-lm(Metabolic.rate~Temp, data = Crab)
+    par(mfrow=c(2,2))
+    plot(all)
+    ```
+
+    In summary P value is higher than 0.05, which is not statistically significant.
+
+    ```{r, echo=TRUE, results='hide'}
+    summary(all)
+    ```
+
+    ggplots for temperature of each sites
+
+    ```{r, echo=FALSE}
+    library(ggplot2)
+    ggplot(Crab, aes(x=Temp, y= Metabolic.rate, color=Site))+
+      geom_point()+ theme_bw()+ geom_smooth(method = 'loess',formula = y~x) 
+    ```
+
+    linear model plots for Temperature at Connecticut site
+
+    ```{r, echo=TRUE, results='hide'}
+
+    con<-lm(Crab$Metabolic.rate[Crab$Site=="CT"]~Crab$Temp[Crab$Site=="CT"])
+    par(mfrow=c(2,2))
+    plot(con)
+    ```
+
+    at the summary below for the Connecticut site , the slope estimate for the temperature is -0.26, indicating that for every one-degree Celsius increase in temperature, the metabolic rate of crabs is expected to decrease by 0.26 units. The p-value for the slope estimate is 0.000227, which is less than the significance level of 0.05, leading us to reject the null hypothesis. This implies that there is strong evidence that temperature has a significant impact on the metabolic rate of crabs at the Connecticut site.
+
+```{r, echo=TRUE, results='hide'}
+summary(con)
+```
+
+linear plots for temperature at new hampshire
+
+```{r, echo=TRUE, results='hide'}
+# new hampshire temp-metabolic.rate
+newh<-lm(Crab$Metabolic.rate[Crab$Site=="NH"]~Crab$Temp[Crab$Site=="NH"])
+par(mfrow=c(2,2))
+plot(newh)
+```
+
+At the New Hampshire site, the slope estimate for the temperature is -0.01, indicating that an increase of 1 degree Celsius in temperature causes a decrease of 0.01 units in the metabolic rate of crabs. However, the p-value for the temperature coefficient is 0.23, which is not enough evidence to reject the null hypothesis, indicating that temperature has no significant effect on the metabolic rate at the New Hampshire site.
+
+```{r, echo=TRUE, results='hide'}
+summary(newh)
+```
+
+linear model plots for temperature at new jersey
+
+```{r, echo=TRUE, results='hide'}
+# new jersey temp-metabolic.rate
+newj<-lm(Crab$Metabolic.rate[Crab$Site=="NJ"]~Crab$Temp[Crab$Site=="NJ"])
+par(mfrow=c(2,2))
+plot(newj)
+```
+
+Finally, at the New Jersey site, the slope estimate for temperature is 0.06, indicating that an increase of 1 degree Celsius in temperature causes an increase of 0.06 units in the metabolic rate of crabs. The p-value is less than 0.05, leading us to reject the null hypothesis, demonstrating that temperature is a significant predictor of the metabolic rate of crabs in New Jersey.
+
+```{r, echo=TRUE, results='hide'}
+summary(newj)
+```
+
+-   in conclusion, we should be cautious about these findings because the available data indicate that there was a relatively narrow range of temperatures at each site, which limited the significance of temperature in our analyses. Specifically, at the time of sampling, New Hampshire temperatures varied between 15--21°C, Connecticut between 21--22°C, and New Jersey between 22--28°C. Thus, we should maintain a degree of skepticism to avoid over-generalizing our findings.
+
+    **2e**
+
+    the diagnostics plot don't look too good, the log transformation of the predictors would be much more better
+
+    ```{r,echo=FALSE}
+    #### 2e
+    model <- lm(Metabolic.rate ~
+                  (PerCrabDryMass+Sex+Site+Temp)^2,data=Crab) 
+    par(mfrow = c(3, 2)) 
+    plot(model, which = 1:6) #### This Diagnostic plots are all ok 
+    ###plot 1 is ok
+    ###plot 2 is ok
+    ###plot 3 is partially ok
+    ###plot 4 is ok
+    ###plot 5 and 6 is ok
+    ```
+
+    **3) Results for New Jersey**
+
+    **3a**.
+
+    Sub-setting only the female crabs in New Jersey with the subset ( ) function
+
+    ```{r}
+    NJ_f<-subset(Crab, Site=="NJ"& Sex=="Female")
+    ```
+
+    The metabolic rate has been examined using the predictor variables dry body mass, missing limbs, regenerating limbs, and temperature with all interactions taken into account in the (linear) model, as described in section 3.1 of the research. I infer from this that they also considered all multi-interactions. It would appear as shown.
+
+    ```{r}
+    model_njf<-lm(Metabolic.rate~PerCrabDryMass*NumberLimbMissing*NumberLimbRegen*Temp, data=NJ_f)
+    ```
+
+    The best-fitting model was then chosen using the step() function out of all the potential interactions in the aforementioned model. The best model will be automatically saved in the object if the command is assigned to it.
+
+    ```{r echo=T, results='hide'}
+    modelnjf<-step(model_njf)
+    ```
+
+    ```{r}
+    summary(modelnjf)
+    ```
+
+    Perhaps it would make more sense to simply consider two-way interactions as this does not seem to be consistent with what the authors have written.
+
+    ```{r echo=T}
+    c_model_njf<-lm(Metabolic.rate~(PerCrabDryMass+NumberLimbMissing+NumberLimbRegen+Temp)^2, data=NJ_f)
+    ```
+
+    ```{r echo=T, results='hide'}
+    cmodelnjf<-step(c_model_njf)
+    ```
+
+    ```{r}
+    summary(cmodelnjf)
+    ```
+
+    Now, the coefficients resemble those in the study. According to the 0.191 estimate, the metabolic rate increases by 0.191 ml O2/h-1 for every 1 gram increase in mass. Similar to how it is shown in the paper, we may plot it.
+
+    ```{r, echo=FALSE}
+    attach(NJ_f)
+
+    plot(PerCrabDryMass, Metabolic.rate, pch=NumberLimbRegen,
+         ylab="Metabolic rate (ml O2-1 h-1)", xlab= "Dry mass (g)")
+
+    detach(NJ_f)
+    ```
+
+    3b.
+
+    Sub-setting only the male crabs in New Jersey with the subset ( ) function
+
+    ```{r}
+    NJ_m<-subset(Crab, Site=="NJ" & Sex=="Male")
+    ```
+
+    As in A we can look at the model with all the two way interactions.
+
+    ```{r}
+    c_model_njm<-lm(Metabolic.rate~(PerCrabDryMass+NumberLimbMissing+NumberLimbRegen+Temp)^2, data=NJ_m)
+    ```
+
+    save the best model with step ( ) function
+
+    ```{r, echo=TRUE, results='hide'}
+    modelnjm<-step(c_model_njm)
+    ```
+
+    ```{r}
+    summary(modelnjm)
+
+    ```
+
+    I achieved the exact outcome as mentioned in the paper. The PerCrabDryMass estimated coefficient for male crabs in New Jersey is 1.106. This coefficient implies that if all other independent variables are unaltered, every 1-gram increment in PerCrabDryMass of male crabs in New Jersey leads to an increase of 1.106 ml O2/h-1 projected value of Metabolic.rate.
+
+    this shows that the male crabs are much more larger than the female crabs in New Jersey
+
+    3c.
+
+    we used the lm function for the two way interactions.
+
+    ```{r}
+    c_model_njf<-lm(Metabolic.rate~(PerCrabDryMass+NumberLimbMissing+NumberLimbRegen+Temp)^2, data=NJ_f)
+    ```
+
+    Save the best model from the test withe the step ( ) function
+
+    ```{r,echo=TRUE, results='hide'}
+    cmodelnjf<-step(c_model_njf) 
+    ```
+
+    ```{r, echo=TRUE, results='hide'}
+    library(MuMIn)
+    ```
+
+    ```{r, echo=TRUE, results='hide'}
+    dredge(lm(Metabolic.rate~(PerCrabDryMass+NumberLimbMissing+NumberLimbRegen+Temp)^2, data=NJ_f, na.action=na.fail))
+    ```
+
+    The dredge function showed that the NLM:NLR and NLM:PCD interaction terms had the highest coefficient estimates, implying that they had the most significant effect on the dependent variable, which is distinct from the step function that identified all predictor variables raised to the power of 2 as the optimal model. They were the lowest model, and the paper did not use this model
+
+    **4) Results for New Hampshire**
+
+    4a.
+
+    Sub-setting only the female crabs in New Hampshire with the subset ( ) function
+
+    ```{r}
+    NH_f<-subset(Crab, Site=="NH" & Sex=="Female")
+    ```
+
+    The predictors dry mass, missing limbs, missing limbs & temperature interaction, and the independent effect (non-significant) of temperature for female crabs are all stated in the text. We will therefore incorporate this into the model.
+
+    ```{r, echo=FALSE}
+    modelnhf<-lm(Metabolic.rate~PerCrabDryMass+NumberLimbMissing+NumberLimbMissing:Temp+Temp, data=NH_f)
+
+    summary(modelnhf)
+    ```
+
+    According to the PerCrabDryMass estimated coefficient of  **0.172** for female crabs in New Hampshire, when all other independent variables are held constant, the projected value of Metabolic.rate increases by **0.172 ml O2/h-1** for every **1 gram** **increase in PerCrabDryMass of female crabs in New Hampshire.**
+
+    According to the Temperature estimated coefficient of  **0.009** for female crabs in New Hampshire, when all other independent variables are held constant, the projected value of Metabolic.rate increases by **0.009 ml O2/h-1** for every **1 degrees** **increase in Temperature of female crabs in New Hampshire.**
+
+    Sub-setting only the male crabs in New Hampshire with the subset ( ) function
+
+    ```{r}
+    NH_m<-subset(Crab, Site=="NH" & Sex=="Male")
+    ```
+
+    for the male crabs the dry mass and dry mass:temperature interaction were selected in the text
+
+    ```{r, echo=FALSE}
+    modelnhm<-lm(Metabolic.rate~PerCrabDryMass+PerCrabDryMass:Temp, data=NH_m)
+
+    summary(modelnhm)
+    ```
+
+    This does not show the same results so I assumed that they must have included the separate effect of temperature once again. Even though it is not stated.
+
+    ```{r, echo=FALSE}
+
+    modelnhm2<-lm(Metabolic.rate~PerCrabDryMass+PerCrabDryMass:Temp+Temp, data=NH_m)
+
+    summary(modelnhm2)
+
+    ```
+
+    According to the PerCrabDryMass estimated coefficient of  **-0.502** for male crabs in New Hampshire, when all other independent variables are held constant, the projected value of Metabolic.rate decreases by **0.502 ml O2/h-1** for every **1 gram increase in PerCrabDryMass of male crabs in New Hampshire**. According to the Temperature estimated coefficient of  **-0.031**  for male crabs in New Hampshire, when all other independent variables are held constant, the projected value of Metabolic.rate decreases by **0.031 ml O2/h-1** for every **1 degrees increase in Temperature of male crabs in New Hampshire.**
+
+    4b.
+
+    We have two options: we can read the study and make comparisons, or we can look at the coefficients generated by the models the paper utilized. We already have those for NJ and NH, we can quickly create them for CT as well.
+
+    we subset for both and female and male crabs in Connecticut using the subset ( ) function
+
+    ```{r}
+    CT_f<-subset(Crab, Site=="CT" & Sex=="Female")
+    CT_m<-subset(Crab, Site=="CT" & Sex=="Male")
+    ```
+
+    The dry mass was only included in the paper for female crabs in CT
+
+    ```{r, echo=TRUE, results='hide'}
+    modelctf<-lm(Metabolic.rate~PerCrabDryMass, data=CT_f)
+
+    summary(modelctf)
+    ```
+
+    The dry mass, regenerating and missing limbs were included in the paper for the male crabs in CT
+
+    ```{r, echo=TRUE, results='hide'}
+    modelctm<-lm(Metabolic.rate~PerCrabDryMass+NumberLimbMissing+NumberLimbRegen, data=CT_m)
+
+    summary(modelctm)
+    ```
+
+    Now that we have all these estimates for the various places and sexes, we can put them in a small table and perhaps plot them for easier comparison.
+
+    ```{r,echo=FALSE}
+    DryMassCoeff <- data.frame(Site=rep(c('NJ', 'NH', 'CT'), each=2),
+                               Sex=rep(c('Female', 'Male'), times=3),
+                               Estimate=c(0.191,1.106,0.172,-0.502,0.184,0.324))
+    library(knitr)
+    kable(DryMassCoeff)
+    ```
+
+    ```{r,echo=FALSE}
+    library(ggplot2)
+    ggplot(data=DryMassCoeff, mapping = aes(x=Site, y=Estimate, colour=Sex))+
+      geom_point()
+    ```
+
+    This demonstrates that the metabolic rate increase for female crabs across all regions is similar as a function of mass. The variability in male crabs is substantially higher.
+
+    4c.
+
+    subsetting for crabs in site NH, both male and female with the subset ( ) function
+
+    ```{r}
+    dryad_NH<-subset(Crab, Site=="NH")### subsetting for crabs in site NH, both male and female
+    ```
+
+    ```{r, results='hide'}
+    m1 <- lm(Metabolic.rate ~ (NumberLimbMissing + NumberLimbRegen + PerCrabDryMass + Temp)^2, 
+             data = dryad_NH) 
+    summary(m1)
+    ```
+
+    used the step ( ) function to select the best model
+
+    ```{r, echo=TRUE, results='hide'}
+    step(m1)
+    ```
+
+    Evaluate the models by examining the residual plots for each model, looking for any patterns, such as increasing variance with fitted values.
+
+    ```{r, echo=TRUE, results='hide'}
+    par(mfrow =c(3, 2)) 
+    plot(m1, which = 1:6)
+    ```
+
+    plot is not satisfactory enough so we try to log transform the predictor variable (PerCrabDryMass) and plot to check for better fit
+
+    ```{r, results='hide'}
+    m2 <- lm(Metabolic.rate ~ (NumberLimbMissing + NumberLimbRegen+
+                                 log(PerCrabDryMass) + Temp)^2, data = dryad_NH) 
+    summary(m2)
+    ```
+
+    ```{r, echo=TRUE, results='hide'}
+    par(mfrow =c(3, 2)) 
+    plot(m2, which = 1:6) 
+    ```
+
+    the plot looked better than the plots without log transformation but lets look at the best model using the step ( ) function
+
+    ```{r, echo=TRUE, results='hide'}
+    step(m2)
+    ```
+
+    AIC is -276.88 which is not better than the the previous model that was not log transformed and had an AIC of -272.22
+
+    so we take a look at the log transformation for both the response variable (metabolic.rate) and the predictor variable (PerCrabDryMass)
+
+    ```{r, results='hide'}
+
+    m22 <- lm(log(Metabolic.rate) ~ (NumberLimbMissing + NumberLimbRegen+
+                                 log(PerCrabDryMass) + Temp)^2, data = dryad_NH) 
+    summary(m22)
+    ```
+
+    ```{r, echo=FALSE}
+    par(mfrow =c(3, 2)) 
+    plot(m22, which = 1:6) 
+    ```
+
+    The plot is ok and better than the previous plots
+
+    use the step ( ) function to select the best model
+
+    ```{r, echo=TRUE, results='hide'}
+    step(m22)
+    ```
+
+    The best-fitting model seemed to be the one with log-transformed Metabolic rate as the response variable and log-transformed PerCrabDryMass as the only predictor. This model had an adjusted R-squared value of 0.8603 and an AIC value of -153.55, which was the lowest among all models. The residual plot for this model showed no significant patterns. Therefore, this model was selected as the most suitable for describing the data.
+
+    **5) Looking across sites**
+
+    5a. Based on the plots, the data doesn't appear to have a linear relationship. To account for this, we can use techniques such as polynomial regression, non-linear regression, or generalized additive models.
+
+    If we include PerCrabDryMass as a variable, we can observe changes in the coefficient for Temperature. After multiple linear regression, which incorporated PerCrabDryMass, the coefficient for Temperature increased from 0.006 to 0.008, indicating the presence of a confounding effect of PerCrabDryMass.
+
+    We now need to create a dataset that includes both New Hampshire and New Jersey. After that, we may plot it as seen below.
+
+    ```{r, echo=FALSE}
+    ECT<-subset(Crab, Site=="NJ"|Site=="NH")
+    par(mfrow =c(1, 1)) 
+    plot(Metabolic.rate~Temp,
+         xlab="Temperature", ylab= "Metabolic.rate (ml O2-1 h-1)", data=ECT)+
+      abline(lm(Metabolic.rate~Temp, data=ECT))
+    ```
+
+    The data does not appear to be linear at all, as can be shown. The residual plot for this model can be viewed.
+
+    ```{r}
+    par(mfrow=c(2,2))
+
+    plot(glm(Metabolic.rate~Temp, data=ECT))
+    ```
+
+    We can approach this non-linearity by performing polynomial regression, non-linear regression, and generalized additive models.
+
+    5b.
+
+    The paper's main objective was to investigate the impact of temperature on metabolic rate. However, the authors did not provide specific figures showing this relationship, apart from the indirect data presented in Figure 2. Based on the previous analyses, it is difficult to summarize the effect of temperature on metabolic rate. The presented data in Figure 2 suggests that temperature and metabolic rate may have a positive correlation. Further analysis and scatterplots with a linear regression line also suggest a small positive correlation. The slope coefficient of the regression line is 0.006, indicating a very slight positive relationship between metabolic rate and temperature. However, the p-value for this slope coefficient (0.1649) is not statistically significant at a 0.05 significance level, indicating that we cannot reject the null hypothesis that the slope is zero. Besides, the low R-squared value (0.011) implies only about 1% of the variation in metabolic rate can be explained by temperature.
+
+    Therefore, the study did not find compelling evidence to support the hypothesis that temperature has a significant effect on metabolic rate in crabs.
+
+    ```{r,echo=FALSE}
+    ### B ----
+    tml<-lm(Metabolic.rate~Temp, data=Crab)
+    summary(tml) 
+    ```
+
+    The plots below suggest a positive correlation between Metabolic.rate\~Temp
+
+    ```{r, echo=FALSE}
+    plot(Metabolic.rate~Temp, data = Crab)
+    abline(lm(Metabolic.rate~Temp, data=Crab))
+    ```
+
+    **6.** The design improvements i am suggesting includes:
+
+-   Expand the sample: Increasing the sample size would allow for more accurate estimations of the correlation between temperature and metabolic rate and would also aid in identifying if the crabs have adapted to the local climate.
+
+-   Utilize various study sites: Comparing the metabolic rates across locations with different climatic circumstances would allow researchers to determine how much these rates change spatially and how much the climate has an impact on them.
+
+-   Climate data collection: To gain a deeper knowledge of the connection between climate and metabolic rate, thorough climate data (such as temperature, humidity, and wind speed) should be gathered at each study location.
+
+-   Adding acclimation and control groups in the study could assist identify whether the crabs have adapted to the local environment's temperatures or whether their metabolic rates are equal regardless of the local climate.
+
+-   Take additional biometric measurements: Monitoring biometric indicators other than metabolic rate that are connected to metabolism, such as oxygen intake, CO2 production, or enzyme activity, would give a more complete picture of the mollusk's physiological response to temperature.
